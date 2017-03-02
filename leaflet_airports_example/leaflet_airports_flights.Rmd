@@ -1,6 +1,6 @@
 ---
 title: "Aiports and Other Travel Terminals with Routes using Leaflet"
-author: "Nathan Sowatskey - Coursera/John Hopkins Data Science Specilisation"
+author: "Nathan Sowatskey - March 2 2017 - Coursera/John Hopkins Data Science Specilisation"
 always_allow_html: yes
 ---
 
