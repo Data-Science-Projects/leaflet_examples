@@ -70,28 +70,29 @@ airports_df <- airports_df[airports_df$Type == "airport",]
 ## Icons Map
 
 ```{r icons, echo = FALSE}
+icon_scale <- 20
 airport_icon <- makeIcon(
   iconUrl = "airport_icon.png",
-  iconWidth = 225/10, iconHeight = 225/10,
-  iconAnchorX = 225/10/2, iconAnchorY = 225/10/2
+  iconWidth = 225/icon_scale, iconHeight = 225/icon_scale,
+  iconAnchorX = 225/icon_scale/2, iconAnchorY = 225/icon_scale/2
 )
 
 port_icon <- makeIcon(
   iconUrl = "port_icon.jpg",
-  iconWidth = 204/10, iconHeight = 204/10,
-  iconAnchorX = 204/10/2, iconAnchorY = 204/10/2
+  iconWidth = 204/icon_scale, iconHeight = 204/icon_scale,
+  iconAnchorX = 204/icon_scale/2, iconAnchorY = 204/icon_scale/2
 )
 
 station_icon <- makeIcon(
   iconUrl = "station_icon.png",
-  iconWidth = 225/10, iconHeight = 225/10,
-  iconAnchorX = 225/10/2, iconAnchorY = 225/10/2
+  iconWidth = 225/icon_scale, iconHeight = 225/icon_scale,
+  iconAnchorX = 225/icon_scale/2, iconAnchorY = 225/icon_scale/2
 )
 
 unknown_icon <- makeIcon(
   iconUrl = "unknown_icon.png",
-  iconWidth = 225/10, iconHeight = 225/10,
-  iconAnchorX = 225/10/2, iconAnchorY = 225/10/2
+  iconWidth = 225/icon_scale, iconHeight = 225/icon_scale,
+  iconAnchorX = 225/icon_scale/2, iconAnchorY = 225/icon_scale/2
 )
 
 ```
@@ -115,10 +116,10 @@ At the time of writing, the radius is not being calculated as expected, which is
 
 ```{r map_with_airports_circlemarkers, message = FALSE}
 airports_map_circles <- leaflet() %>% addTiles() %>% 
-  addCircleMarkers(data = ports_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "blue", radius = ~max(sqrt(total_departures), 10))  %>% 
-  addCircleMarkers(data = stations_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "black", radius = ~max(sqrt(total_departures), 10))  %>% 
-  addCircleMarkers(data = unknown_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "red", radius = ~max(sqrt(total_departures), 10)) %>%
-  addCircleMarkers(data = airports_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "purple", radius = ~max(sqrt(total_departures), 10))  %>%
+  addCircleMarkers(data = ports_df, popup = ~Name, label = ~IATA, clusterOptions = markerClusterOptions(), color = "blue", radius = ~pmax(sqrt(total_departures), 10))  %>% 
+  addCircleMarkers(data = stations_df, popup = ~Name, label = ~IATA, clusterOptions = markerClusterOptions(), color = "black", radius = ~pmax(sqrt(total_departures), 10))  %>% 
+  addCircleMarkers(data = unknown_df, popup = ~Name, label = ~IATA, clusterOptions = markerClusterOptions(), color = "red", radius = ~pmax(sqrt(total_departures), 10)) %>%
+  addCircleMarkers(data = airports_df, popup = ~Name, label = ~IATA, clusterOptions = markerClusterOptions(), color = "purple", radius = ~pmax(sqrt(total_departures), 10))  %>%
   addLegend(labels = c("Airport", "Sea Port", "Train Station", "Unknown"), colors = c("purple", "blue", "black", "red"))
 airports_map_circles
 ```
@@ -133,10 +134,10 @@ airports_map_icons_and_circles <- leaflet() %>% addTiles() %>%
   addMarkers(data = ports_df, clusterOptions = markerClusterOptions(), icon = port_icon)  %>% 
   addMarkers(data = stations_df, clusterOptions = markerClusterOptions(), icon = station_icon)  %>% 
   addMarkers(data = unknown_df, clusterOptions = markerClusterOptions(), icon = unknown_icon) %>%
-  addCircleMarkers(data = ports_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "blue", radius = ~max(sqrt(total_departures), 10))  %>% 
-  addCircleMarkers(data = stations_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "black", radius = ~max(sqrt(total_departures), 10))  %>% 
-  addCircleMarkers(data = unknown_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "red", radius = ~max(sqrt(total_departures), 10)) %>%
-  addCircleMarkers(data = airports_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "purple", radius = ~max(sqrt(total_departures), 10))  %>%
+  addCircleMarkers(data = ports_df, popup = ~Name, label = ~IATA, clusterOptions = markerClusterOptions(), color = "blue", radius = ~pmax(sqrt(total_departures), 10))  %>% 
+  addCircleMarkers(data = stations_df, popup = ~Name, label = ~IATA, clusterOptions = markerClusterOptions(), color = "black", radius = ~pmax(sqrt(total_departures), 10))  %>% 
+  addCircleMarkers(data = unknown_df, popup = ~Name, label = ~IATA, clusterOptions = markerClusterOptions(), color = "red", radius = ~pmax(sqrt(total_departures), 10)) %>%
+  addCircleMarkers(data = airports_df, popup = ~Name, label = ~IATA, clusterOptions = markerClusterOptions(), color = "purple", radius = ~pmax(sqrt(total_departures), 10))  %>%
   addLegend(labels = c("Airport", "Sea Port", "Train Station", "Unknown"), colors = c("purple", "blue", "black", "red"))
 airports_map_icons_and_circles
 ```
