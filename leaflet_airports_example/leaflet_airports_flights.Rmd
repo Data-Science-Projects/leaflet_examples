@@ -1,0 +1,147 @@
+---
+title: "Aiports and Other Travel Terminals with Routes using Leaflet"
+author: "Nathan Sowatskey - Coursera/John Hopkins Data Science Specilisation"
+always_allow_html: yes
+---
+
+```{r setup, echo = FALSE, message = FALSE}
+require("leaflet")
+require("dplyr")
+```
+#Introduction
+
+This is an exercise using the [Leaflet JavaScript library](http://leafletjs.com) with R. It is based on airports and airlines data from [OpenFlights.org](http://openflights.org/data.html), as explained below in detail in the "Data" section.
+
+#Data
+
+The data sets that this study is based on are from [OpenFlights.org](http://openflights.org/data.html), specifically in their [GitHub repository](https://github.com/jpatokal/openflights/tree/master/data). Also see this [help](http://openflights.org/help/database.html)
+
+In their, slightly edited, words:
+
+"That GitHub copy is only a sporadically updated static snapshot of the live OpenFlights database. If you would like an up-to-the-minute copy, or you would like your data filtered by any information available to OpenFlights.org (eg. number of routes at the airport), do not hesitate to [contact them](http://openflights.org/about.html)."
+
+For the purposes of this study, I have copied the data available on Wednesday March 1, 2017, 11:30 CET. This is solely so that I have a well-defined baseline. A future version of this study could obtain the data upon demand, or even use other sources of data.
+
+The specific data sets are loaded and illustrated below:
+
+##Routes
+
+See [Route](http://openflights.org/data.html#route) for details.
+
+```{r load_routes}
+routes_columns <- c("Airline", "Airline_ID", "Source_airport", "Source_airport_ID", "Destination_airport", "Destination_airport_ID", "Codeshare", "Stops", "Equipment")
+routes_df <- read.csv("routes.dat", header = FALSE, col.names = routes_columns, na.strings = "\\N")
+departures_per_port <- routes_df %>% group_by(Source_airport) %>% summarise(total_departures = n())
+```
+
+##Airports Extended
+
+See [Aiports](http://openflights.org/data.html#airport) for details.
+
+```{r load_airports}
+#Set the column names using "Lat" and "Long" to be compatible with Leaflet default naming conventions.
+airports_columns <- c("Airport_ID", "Name", "City", "Country", "IATA", "ICAO", "Lat", "Long", "Altitude", "Timezone", "DST", "Tz_database_TZ", "Type", "Source")
+#Setting the IATA and ICAO to characters so that we can tidy up missing IATA codes later
+airports_colClasses <- c(NA, NA, NA, NA, "character", "character", NA, NA, NA, NA, NA, NA, NA, NA)
+airports_df <- read.csv("airports-extended.dat", header = FALSE, col.names = airports_columns, na.strings = "\\N", colClasses = airports_colClasses)
+#Remove invalid data
+airports_df <- airports_df[(airports_df$Lat != 1 & airports_df$Long != 1),]
+airports_df <- airports_df[(airports_df$Lat != 0 & airports_df$Long != 0),]
+airports_df <- airports_df[(airports_df$Lat != -1.1111 & airports_df$Long != -1.1111),]
+#Add the departures per port value to airports_df
+airports_df$total_departures <- departures_per_port[match(airports_df$IATA, departures_per_port$Source_airport), 2]$total_departures
+#Set all NAs, which is where there is no departure data, to 0, so that the radius functions work in Leaflet
+airports_df$total_departures[is.na(airports_df$total_departures)] <- 0
+#Set missing IATA codes to the ICAO value, used for labels in maps, see the airports_colClasses above
+airports_df$IATA[is.na(airports_df$IATA)] <- as.character(airports_df$ICAO[is.na(airports_df$IATA)])
+#Set still missing IATA codes to name
+airports_df$IATA[is.na(airports_df$IATA)] <- as.character(airports_df$Name[is.na(airports_df$IATA)])
+#Remove columns that we are not using
+airports_df <- subset(airports_df, select=-c(City, Country, ICAO, Altitude, Timezone, DST, Tz_database_TZ, Source))
+#Create separate data frames for different types
+ports_df <- airports_df[airports_df$Type == "port",] 
+stations_df <- airports_df[airports_df$Type == "station",]
+unknown_df <- airports_df[airports_df$Type == "unknown",]
+airports_df <- airports_df[airports_df$Type == "airport",]
+```
+
+#Map with Aiports and Terminals
+
+## Icons Map
+
+```{r icons, echo = FALSE}
+airport_icon <- makeIcon(
+  iconUrl = "airport_icon.png",
+  iconWidth = 225/10, iconHeight = 225/10,
+  iconAnchorX = 225/10/2, iconAnchorY = 225/10/2
+)
+
+port_icon <- makeIcon(
+  iconUrl = "port_icon.jpg",
+  iconWidth = 204/10, iconHeight = 204/10,
+  iconAnchorX = 204/10/2, iconAnchorY = 204/10/2
+)
+
+station_icon <- makeIcon(
+  iconUrl = "station_icon.png",
+  iconWidth = 225/10, iconHeight = 225/10,
+  iconAnchorX = 225/10/2, iconAnchorY = 225/10/2
+)
+
+unknown_icon <- makeIcon(
+  iconUrl = "unknown_icon.png",
+  iconWidth = 225/10, iconHeight = 225/10,
+  iconAnchorX = 225/10/2, iconAnchorY = 225/10/2
+)
+
+```
+
+This map uses icons to show the different ports types, with the IATA or ICAO code as a label, and the name as a popup. Note that not all ports have IATA codes, so the ICAO code is used instead.
+
+```{r map_with_airports_icons, message = FALSE}
+airports_map_icons <- leaflet() %>% addTiles() %>% 
+  addMarkers(data = airports_df, popup = ~Name, label = ~IATA, clusterOptions = markerClusterOptions(), icon = airport_icon)  %>% 
+  addMarkers(data = ports_df, popup = ~Name, label = ~IATA, clusterOptions = markerClusterOptions(), icon = port_icon)  %>% 
+  addMarkers(data = stations_df, popup = ~Name, label = ~IATA, clusterOptions = markerClusterOptions(), icon = station_icon)  %>% 
+  addMarkers(data = unknown_df, popup = ~Name, label = ~IATA, clusterOptions = markerClusterOptions(), icon = unknown_icon)
+airports_map_icons
+```
+
+##Circles Map
+
+This map uses circle markers, with colours to show the different ports types, with the IATA code as a label, and the name as a popup. The circle size represents the number of departures from the port.
+
+At the time of writing, the radius is not being calculated as expected, which is why it is being added to the popup, for debugging purposes.
+
+```{r map_with_airports_circlemarkers, message = FALSE}
+airports_map_circles <- leaflet() %>% addTiles() %>% 
+  addCircleMarkers(data = ports_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "blue", radius = ~max(sqrt(total_departures), 10))  %>% 
+  addCircleMarkers(data = stations_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "black", radius = ~max(sqrt(total_departures), 10))  %>% 
+  addCircleMarkers(data = unknown_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "red", radius = ~max(sqrt(total_departures), 10)) %>%
+  addCircleMarkers(data = airports_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "purple", radius = ~max(sqrt(total_departures), 10))  %>%
+  addLegend(labels = c("Airport", "Sea Port", "Train Station", "Unknown"), colors = c("purple", "blue", "black", "red"))
+airports_map_circles
+```
+
+##Icons and Circles
+
+This is a combination of the two ideas, with icon markers and circles.
+
+```{r map_with_airports_icons_and_circles, message = FALSE}
+airports_map_icons_and_circles <- leaflet() %>% addTiles() %>% 
+  addMarkers(data = airports_df, clusterOptions = markerClusterOptions(), icon = airport_icon)  %>% 
+  addMarkers(data = ports_df, clusterOptions = markerClusterOptions(), icon = port_icon)  %>% 
+  addMarkers(data = stations_df, clusterOptions = markerClusterOptions(), icon = station_icon)  %>% 
+  addMarkers(data = unknown_df, clusterOptions = markerClusterOptions(), icon = unknown_icon) %>%
+  addCircleMarkers(data = ports_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "blue", radius = ~max(sqrt(total_departures), 10))  %>% 
+  addCircleMarkers(data = stations_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "black", radius = ~max(sqrt(total_departures), 10))  %>% 
+  addCircleMarkers(data = unknown_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "red", radius = ~max(sqrt(total_departures), 10)) %>%
+  addCircleMarkers(data = airports_df, popup = ~paste(Name, " - ", max(sqrt(total_departures), 10), sep = ""), label = ~IATA, clusterOptions = markerClusterOptions(), color = "purple", radius = ~max(sqrt(total_departures), 10))  %>%
+  addLegend(labels = c("Airport", "Sea Port", "Train Station", "Unknown"), colors = c("purple", "blue", "black", "red"))
+airports_map_icons_and_circles
+```
+
+## Conclusion
+
+For more details about the leaflet package for R 
+visit http://rstudio.github.io/leaflet/.
